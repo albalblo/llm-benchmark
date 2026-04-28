@@ -1,6 +1,8 @@
 # LLM Benchmark (ollama only)
 
-This tool allows you to get the t/s (tokens per second) of Large Language Models (LLMs) running on your local machine. Currently we only support testing Ollama llms
+This tool allows you to get the t/s (tokens per second) of Large Language Models (LLMs) running on your local machine. Currently we only support testing Ollama llms.
+
+This was forked from MinhNgyuen/llm-benchmark to solve a bug, and add functionalities I needed.
 
 ## Example output
 
@@ -97,7 +99,7 @@ Follow these instructions to set up and run benchmarks on your system.
 To run benchmarks, use the `benchmark.py` script with the desired command line arguments:
 
 ```bash
-python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report on the financials of Nvidia"
+python benchmark.py --verbose --prompts "Why is the sky blue?" "Write a report on the financials of Nvidia"
 ```
 
 #### Command Line Arguments
@@ -106,6 +108,7 @@ python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report 
 - `--skip-models`: Specify a list of model names to skip during the benchmark. Get the list of possible models by running the command `ollama list`. Separate multiple models with spaces.
 - `--prompts`: Provide custom prompts to use for benchmarking. Separate multiple prompts with spaces.
 - `--no-warm-up`: Skip the warm-up run. By default, each model receives a short throwaway prompt before benchmarking to ensure it is fully loaded into memory, so that cold-start overhead does not pollute the results. Use this flag if you want to include model load time in your measurements.
+- `--no-think`: Disable thinking/reasoning mode for models that support it (e.g. DeepSeek R1, QwQ). Models without thinking capability will ignore this flag. Useful for benchmarking raw response speed without the overhead of chain-of-thought reasoning.
 
 #### Examples
 
@@ -131,6 +134,12 @@ python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report 
 
   ```bash
   python benchmark.py --no-warm-up
+  ```
+
+- **Disable thinking mode for reasoning models**
+
+  ```bash
+  python benchmark.py --no-think --verbose
   ```
 
 ## Development

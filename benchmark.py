@@ -41,7 +41,9 @@ class OllamaResponse(BaseModel):
         return value
 
 
-def run_benchmark(model_name: str, prompt: str, verbose: bool) -> OllamaResponse | None:
+def run_benchmark(
+    model_name: str, prompt: str, verbose: bool, think: bool = True
+) -> OllamaResponse | None:
 
     last_element = None
 
@@ -56,6 +58,7 @@ def run_benchmark(model_name: str, prompt: str, verbose: bool) -> OllamaResponse
                     },
                 ],
                 stream=True,
+                think=think,
             )
             for chunk in stream:
                 print(chunk.message.content, end="", flush=True)
@@ -69,6 +72,7 @@ def run_benchmark(model_name: str, prompt: str, verbose: bool) -> OllamaResponse
                         "content": prompt,
                     },
                 ],
+                think=think,
             )
     except Exception as e:
         print(f"\nError communicating with Ollama: {e}")
@@ -150,7 +154,7 @@ def average_stats(responses: list[OllamaResponse]):
 WARMUP_PROMPT = "Hi"
 
 
-def warm_up(model_name: str, verbose: bool):
+def warm_up(model_name: str, verbose: bool, think: bool = True):
     """Run a short throwaway prompt to load the model into memory,
     so that subsequent benchmark runs are not polluted by load time."""
     if verbose:
@@ -159,6 +163,7 @@ def warm_up(model_name: str, verbose: bool):
         ollama.chat(
             model=model_name,
             messages=[{"role": "user", "content": WARMUP_PROMPT}],
+            think=think,
         )
     except Exception as e:
         print(f"Warning: warm-up failed for {model_name}: {e}")
@@ -225,6 +230,16 @@ def main():
             " overhead polluting results."
         ),
     )
+    parser.add_argument(
+        "--no-think",
+        action="store_true",
+        default=False,
+        help=(
+            "Disable thinking/reasoning mode for models that support it"
+            " (e.g. DeepSeek R1, QwQ). Models without thinking capability"
+            " will ignore this flag."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -232,10 +247,12 @@ def main():
     skip_models = args.skip_models
     prompts = args.prompts
     do_warm_up = not args.no_warm_up
+    think = not args.no_think
     print(
         f"\nVerbose: {verbose}"
         f"\nSkip models: {skip_models}"
         f"\nWarm-up: {do_warm_up}"
+        f"\nThink: {think}"
         f"\nPrompts: {prompts}"
     )
 
@@ -244,13 +261,13 @@ def main():
 
     for model_name in model_names:
         if do_warm_up:
-            warm_up(model_name, verbose)
+            warm_up(model_name, verbose, think=think)
 
         responses: list[OllamaResponse] = []
         for prompt in prompts:
             if verbose:
                 print(f"\n\nBenchmarking: {model_name}\nPrompt: {prompt}")
-            response = run_benchmark(model_name, prompt, verbose=verbose)
+            response = run_benchmark(model_name, prompt, verbose=verbose, think=think)
             if response is None:
                 print(f"Skipping failed run for {model_name}")
                 continue
@@ -274,3 +291,4 @@ if __name__ == "__main__":
     #   --prompts "What color is the sky" \
     #   "Write a report on the financials of Microsoft"
     # python benchmark.py --no-warm-up --verbose
+    # python benchmark.py --no-think --verbose
