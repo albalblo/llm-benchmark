@@ -1,2 +1,2 @@
-ollama
-pydantic
+ollama>=0.6.1
+pydantic>=2.13.3

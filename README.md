@@ -46,7 +46,7 @@ Follow these instructions to set up and run benchmarks on your system.
 
 ### Prerequisites
 
-- Python 3.6+
+- Python 3.8+
 - [ollama](https://ollama.com/) installed
 
 ### Installation

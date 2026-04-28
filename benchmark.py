@@ -1,5 +1,6 @@
 import argparse
-from typing import List
+import sys
+from typing import List, Optional
 
 import ollama
 from pydantic import (
@@ -41,43 +42,45 @@ class OllamaResponse(BaseModel):
 
 def run_benchmark(
     model_name: str, prompt: str, verbose: bool
-) -> OllamaResponse:
+) -> Optional[OllamaResponse]:
 
     last_element = None
 
-    if verbose:
-        stream = ollama.chat(
-            model=model_name,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-            stream=True,
-        )
-        for chunk in stream:
-            print(chunk["message"]["content"], end="", flush=True)
-            last_element = chunk
-    else:
-        last_element = ollama.chat(
-            model=model_name,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-        )
+    try:
+        if verbose:
+            stream = ollama.chat(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+                stream=True,
+            )
+            for chunk in stream:
+                print(chunk.message.content, end="", flush=True)
+                last_element = chunk
+        else:
+            last_element = ollama.chat(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+            )
+    except Exception as e:
+        print(f"\nError communicating with Ollama: {e}")
+        print("Make sure the Ollama daemon is running (ollama serve).")
+        return None
 
     if not last_element:
         print("System Error: No response received from ollama")
         return None
 
-    # with open("data/ollama/ollama_res.json", "w") as outfile:
-    #     outfile.write(json.dumps(last_element, indent=4))
-
-    return OllamaResponse.model_validate(last_element)
+    return OllamaResponse.model_validate(last_element.model_dump())
 
 
 def nanosec_to_sec(nanosec):
@@ -85,19 +88,25 @@ def nanosec_to_sec(nanosec):
 
 
 def inference_stats(model_response: OllamaResponse):
-    # Use properties for calculations
-    prompt_ts = model_response.prompt_eval_count / (
-        nanosec_to_sec(model_response.prompt_eval_duration)
+    prompt_duration_s = nanosec_to_sec(model_response.prompt_eval_duration)
+    eval_duration_s = nanosec_to_sec(model_response.eval_duration)
+
+    prompt_ts = (
+        model_response.prompt_eval_count / prompt_duration_s
+        if prompt_duration_s > 0
+        else 0.0
     )
-    response_ts = model_response.eval_count / (
-        nanosec_to_sec(model_response.eval_duration)
+    response_ts = (
+        model_response.eval_count / eval_duration_s
+        if eval_duration_s > 0
+        else 0.0
     )
+    total_tokens = model_response.prompt_eval_count + model_response.eval_count
+    total_duration_s = prompt_duration_s + eval_duration_s
     total_ts = (
-        model_response.prompt_eval_count + model_response.eval_count
-    ) / (
-        nanosec_to_sec(
-            model_response.prompt_eval_duration + model_response.eval_duration
-        )
+        total_tokens / total_duration_s
+        if total_duration_s > 0
+        else 0.0
     )
 
     print(
@@ -112,8 +121,8 @@ def inference_stats(model_response: OllamaResponse):
         \tPrompt tokens: {model_response.prompt_eval_count}
         \tResponse tokens: {model_response.eval_count}
         \tModel load time: {nanosec_to_sec(model_response.load_duration):.2f}s
-        \tPrompt eval time: {nanosec_to_sec(model_response.prompt_eval_duration):.2f}s
-        \tResponse time: {nanosec_to_sec(model_response.eval_duration):.2f}s
+        \tPrompt eval time: {prompt_duration_s:.2f}s
+        \tResponse time: {eval_duration_s:.2f}s
         \tTotal time: {nanosec_to_sec(model_response.total_duration):.2f}s
 ----------------------------------------------------
         """
@@ -125,28 +134,38 @@ def average_stats(responses: List[OllamaResponse]):
         print("No stats to average")
         return
 
+    n = len(responses)
     res = OllamaResponse(
         model=responses[0].model,
         created_at=datetime.now(),
         message=Message(
             role="system",
-            content=f"Average stats across {len(responses)} runs",
+            content=f"Average stats across {n} runs",
         ),
         done=True,
-        total_duration=sum(r.total_duration for r in responses),
-        load_duration=sum(r.load_duration for r in responses),
-        prompt_eval_count=sum(r.prompt_eval_count for r in responses),
-        prompt_eval_duration=sum(r.prompt_eval_duration for r in responses),
-        eval_count=sum(r.eval_count for r in responses),
-        eval_duration=sum(r.eval_duration for r in responses),
+        total_duration=sum(r.total_duration for r in responses) // n,
+        load_duration=sum(r.load_duration for r in responses) // n,
+        prompt_eval_count=sum(r.prompt_eval_count for r in responses) // n,
+        prompt_eval_duration=sum(r.prompt_eval_duration for r in responses) // n,
+        eval_count=sum(r.eval_count for r in responses) // n,
+        eval_duration=sum(r.eval_duration for r in responses) // n,
     )
     print("Average stats:")
     inference_stats(res)
 
 
-def get_benchmark_models(skip_models: List[str] = []) -> List[str]:
-    models = ollama.list().get("models", [])
-    model_names = [model["model"] for model in models]
+def get_benchmark_models(skip_models: Optional[List[str]] = None) -> List[str]:
+    if skip_models is None:
+        skip_models = []
+
+    try:
+        models = ollama.list().models or []
+    except Exception as e:
+        print(f"Error listing Ollama models: {e}")
+        print("Make sure the Ollama daemon is running (ollama serve).")
+        sys.exit(1)
+
+    model_names = [model.model for model in models]
     if len(skip_models) > 0:
         model_names = [
             model for model in model_names if model not in skip_models
@@ -202,6 +221,9 @@ def main():
             if verbose:
                 print(f"\n\nBenchmarking: {model_name}\nPrompt: {prompt}")
             response = run_benchmark(model_name, prompt, verbose=verbose)
+            if response is None:
+                print(f"Skipping failed run for {model_name}")
+                continue
             responses.append(response)
 
             if verbose:
