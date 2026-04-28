@@ -154,6 +154,25 @@ def average_stats(responses: List[OllamaResponse]):
     inference_stats(res)
 
 
+WARMUP_PROMPT = "Hi"
+
+
+def warm_up(model_name: str, verbose: bool):
+    """Run a short throwaway prompt to load the model into memory,
+    so that subsequent benchmark runs are not polluted by load time."""
+    if verbose:
+        print(f"Warming up {model_name}...")
+    try:
+        ollama.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": WARMUP_PROMPT}],
+        )
+    except Exception as e:
+        print(f"Warning: warm-up failed for {model_name}: {e}")
+    if verbose:
+        print(f"Warm-up complete for {model_name}\n")
+
+
 def get_benchmark_models(skip_models: Optional[List[str]] = None) -> List[str]:
     if skip_models is None:
         skip_models = []
@@ -202,20 +221,30 @@ def main():
         ],
         help="List of prompts to use for benchmarking. Separate multiple prompts with spaces.",
     )
+    parser.add_argument(
+        "--no-warm-up",
+        action="store_true",
+        default=False,
+        help="Skip the warm-up run. By default, each model is warmed up before benchmarking to avoid cold-start overhead polluting results.",
+    )
 
     args = parser.parse_args()
 
     verbose = args.verbose
     skip_models = args.skip_models
     prompts = args.prompts
+    do_warm_up = not args.no_warm_up
     print(
-        f"\nVerbose: {verbose}\nSkip models: {skip_models}\nPrompts: {prompts}"
+        f"\nVerbose: {verbose}\nSkip models: {skip_models}\nWarm-up: {do_warm_up}\nPrompts: {prompts}"
     )
 
     model_names = get_benchmark_models(skip_models)
     benchmarks = {}
 
     for model_name in model_names:
+        if do_warm_up:
+            warm_up(model_name, verbose)
+
         responses: List[OllamaResponse] = []
         for prompt in prompts:
             if verbose:
@@ -239,3 +268,4 @@ if __name__ == "__main__":
     main()
     # Example usage:
     # python benchmark.py --verbose --skip-models aisherpa/mistral-7b-instruct-v02:Q5_K_M llama2:latest --prompts "What color is the sky" "Write a report on the financials of Microsoft"
+    # python benchmark.py --no-warm-up --verbose

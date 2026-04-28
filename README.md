@@ -2,8 +2,10 @@
 
 This tool allows you to get the t/s (tokens per second) of Large Language Models (LLMs) running on your local machine. Currently we only support testing Ollama llms
 
-### Example output
+## Example output
+
 Output on a Nvidia 4090 windows desktop
+
 ```bash
 Average stats:
 
@@ -46,7 +48,7 @@ Follow these instructions to set up and run benchmarks on your system.
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.6+
 - [ollama](https://ollama.com/) installed
 
 ### Installation
@@ -103,6 +105,7 @@ python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report 
 - `--verbose`: Prints the prompts and streams the responses from Ollama
 - `--skip-models`: Specify a list of model names to skip during the benchmark. Get the list of possible models by running the command `ollama list`. Separate multiple models with spaces.
 - `--prompts`: Provide custom prompts to use for benchmarking. Separate multiple prompts with spaces.
+- `--no-warm-up`: Skip the warm-up run. By default, each model receives a short throwaway prompt before benchmarking to ensure it is fully loaded into memory, so that cold-start overhead does not pollute the results. Use this flag if you want to include model load time in your measurements.
 
 #### Examples
 
@@ -122,6 +125,12 @@ python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report 
 
   ```bash
   python benchmark.py --skip-models model1 llama2:latest
+  ```
+
+- **Disable warm-up to include cold-start time**
+
+  ```bash
+  python benchmark.py --no-warm-up
   ```
 
 ## Contributing
