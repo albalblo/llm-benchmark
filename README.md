@@ -2,11 +2,11 @@
 
 This tool allows you to get the t/s (tokens per second) of Large Language Models (LLMs) running on your local machine. Currently we only support testing Ollama llms
 
-## Example output
+### Example output
 
 Output on a Nvidia 4090 windows desktop
-
 ```bash
+
 Average stats:
 
 ----------------------------------------------------
@@ -48,7 +48,7 @@ Follow these instructions to set up and run benchmarks on your system.
 
 ### Prerequisites
 
-- Python 3.6+
+- Python 3.9+
 - [ollama](https://ollama.com/) installed
 
 ### Installation

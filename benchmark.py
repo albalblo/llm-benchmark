@@ -1,7 +1,5 @@
 import argparse
 import sys
-from typing import List, Optional
-
 import ollama
 from pydantic import (
     BaseModel,
@@ -42,7 +40,7 @@ class OllamaResponse(BaseModel):
 
 def run_benchmark(
     model_name: str, prompt: str, verbose: bool
-) -> Optional[OllamaResponse]:
+) -> OllamaResponse | None:
 
     last_element = None
 
@@ -129,7 +127,7 @@ def inference_stats(model_response: OllamaResponse):
     )
 
 
-def average_stats(responses: List[OllamaResponse]):
+def average_stats(responses: list[OllamaResponse]):
     if len(responses) == 0:
         print("No stats to average")
         return
@@ -173,7 +171,7 @@ def warm_up(model_name: str, verbose: bool):
         print(f"Warm-up complete for {model_name}\n")
 
 
-def get_benchmark_models(skip_models: Optional[List[str]] = None) -> List[str]:
+def get_benchmark_models(skip_models: list[str] | None = None) -> list[str]:
     if skip_models is None:
         skip_models = []
 
@@ -245,7 +243,7 @@ def main():
         if do_warm_up:
             warm_up(model_name, verbose)
 
-        responses: List[OllamaResponse] = []
+        responses: list[OllamaResponse] = []
         for prompt in prompts:
             if verbose:
                 print(f"\n\nBenchmarking: {model_name}\nPrompt: {prompt}")
