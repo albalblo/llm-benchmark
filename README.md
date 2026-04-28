@@ -56,7 +56,7 @@ Follow these instructions to set up and run benchmarks on your system.
    Open a terminal or powershell and run:
 
    ```bash
-   git clone https://github.com/yourusername/llm-benchmark.git
+   git clone https://github.com/albalblo/llm-benchmark.git
    cd llm-benchmark
    ```
 

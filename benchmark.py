@@ -146,7 +146,7 @@ def average_stats(responses: List[OllamaResponse]):
 
 def get_benchmark_models(skip_models: List[str] = []) -> List[str]:
     models = ollama.list().get("models", [])
-    model_names = [model["name"] for model in models]
+    model_names = [model["model"] for model in models]
     if len(skip_models) > 0:
         model_names = [
             model for model in model_names if model not in skip_models
