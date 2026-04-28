@@ -1,13 +1,13 @@
 import argparse
 import sys
+from datetime import datetime
+
 import ollama
 from pydantic import (
     BaseModel,
     Field,
     field_validator,
 )
-
-from datetime import datetime
 
 
 class Message(BaseModel):
@@ -32,15 +32,16 @@ class OllamaResponse(BaseModel):
     def validate_prompt_eval_count(cls, value: int) -> int:
         if value == -1:
             print(
-                "\nWarning: prompt token count was not provided, potentially due to prompt caching. For more info, see https://github.com/ollama/ollama/issues/2068\n"
+                "\nWarning: prompt token count was not provided,"
+                " potentially due to prompt caching."
+                " For more info, see"
+                " https://github.com/ollama/ollama/issues/2068\n"
             )
             return 0  # Set default value
         return value
 
 
-def run_benchmark(
-    model_name: str, prompt: str, verbose: bool
-) -> OllamaResponse | None:
+def run_benchmark(model_name: str, prompt: str, verbose: bool) -> OllamaResponse | None:
 
     last_element = None
 
@@ -95,17 +96,11 @@ def inference_stats(model_response: OllamaResponse):
         else 0.0
     )
     response_ts = (
-        model_response.eval_count / eval_duration_s
-        if eval_duration_s > 0
-        else 0.0
+        model_response.eval_count / eval_duration_s if eval_duration_s > 0 else 0.0
     )
     total_tokens = model_response.prompt_eval_count + model_response.eval_count
     total_duration_s = prompt_duration_s + eval_duration_s
-    total_ts = (
-        total_tokens / total_duration_s
-        if total_duration_s > 0
-        else 0.0
-    )
+    total_ts = total_tokens / total_duration_s if total_duration_s > 0 else 0.0
 
     print(
         f"""
@@ -184,9 +179,7 @@ def get_benchmark_models(skip_models: list[str] | None = None) -> list[str]:
 
     model_names = [model.model for model in models]
     if len(skip_models) > 0:
-        model_names = [
-            model for model in model_names if model not in skip_models
-        ]
+        model_names = [model for model in model_names if model not in skip_models]
     print(f"Evaluating models: {model_names}\n")
     return model_names
 
@@ -217,13 +210,20 @@ def main():
             "Why is the sky blue?",
             "Write a report on the financials of Apple Inc.",
         ],
-        help="List of prompts to use for benchmarking. Separate multiple prompts with spaces.",
+        help=(
+            "List of prompts to use for benchmarking."
+            " Separate multiple prompts with spaces."
+        ),
     )
     parser.add_argument(
         "--no-warm-up",
         action="store_true",
         default=False,
-        help="Skip the warm-up run. By default, each model is warmed up before benchmarking to avoid cold-start overhead polluting results.",
+        help=(
+            "Skip the warm-up run. By default, each model is"
+            " warmed up before benchmarking to avoid cold-start"
+            " overhead polluting results."
+        ),
     )
 
     args = parser.parse_args()
@@ -233,7 +233,10 @@ def main():
     prompts = args.prompts
     do_warm_up = not args.no_warm_up
     print(
-        f"\nVerbose: {verbose}\nSkip models: {skip_models}\nWarm-up: {do_warm_up}\nPrompts: {prompts}"
+        f"\nVerbose: {verbose}"
+        f"\nSkip models: {skip_models}"
+        f"\nWarm-up: {do_warm_up}"
+        f"\nPrompts: {prompts}"
     )
 
     model_names = get_benchmark_models(skip_models)
@@ -258,12 +261,16 @@ def main():
                 inference_stats(response)
         benchmarks[model_name] = responses
 
-    for model_name, responses in benchmarks.items():
+    for _model_name, responses in benchmarks.items():
         average_stats(responses)
 
 
 if __name__ == "__main__":
     main()
     # Example usage:
-    # python benchmark.py --verbose --skip-models aisherpa/mistral-7b-instruct-v02:Q5_K_M llama2:latest --prompts "What color is the sky" "Write a report on the financials of Microsoft"
+    # python benchmark.py --verbose \
+    #   --skip-models aisherpa/mistral-7b-instruct-v02:Q5_K_M \
+    #   llama2:latest \
+    #   --prompts "What color is the sky" \
+    #   "Write a report on the financials of Microsoft"
     # python benchmark.py --no-warm-up --verbose

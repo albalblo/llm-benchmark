@@ -2,11 +2,11 @@
 
 This tool allows you to get the t/s (tokens per second) of Large Language Models (LLMs) running on your local machine. Currently we only support testing Ollama llms
 
-### Example output
+## Example output
 
 Output on a Nvidia 4090 windows desktop
-```bash
 
+```bash
 Average stats:
 
 ----------------------------------------------------
@@ -132,6 +132,32 @@ python benchmark.py --verbose --prompts "What is the sky blue?" "Write a report 
   ```bash
   python benchmark.py --no-warm-up
   ```
+
+## Development
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
+
+```bash
+pip install ruff
+```
+
+To check and auto-fix lint issues:
+
+```bash
+ruff check --fix .
+```
+
+To format the code:
+
+```bash
+ruff format .
+```
+
+You can run both in one go before committing:
+
+```bash
+ruff check --fix . && ruff format .
+```
 
 ## Contributing
 
